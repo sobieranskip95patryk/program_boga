@@ -101,6 +101,22 @@ export const typeDefs = gql`
 
     """Get all relationships for a node (incoming + outgoing)"""
     getNodeRelationships(id: ID!): NodeRelationships!
+
+    """Get audit events (optionally for a specific concept)"""
+    getAuditEvents(limit: Int = 50, konceptId: ID): [AuditEvent!]!
+  }
+
+  """
+  Audit trail event
+  """
+  type AuditEvent {
+    id: ID!
+    timestamp: String!
+    action: String!
+    entityType: String!
+    entityId: ID!
+    actor: String!
+    details: String
   }
 
   """

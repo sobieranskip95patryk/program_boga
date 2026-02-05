@@ -5,6 +5,46 @@
  * ════════════════════════════════════════════════════════════════════════════
  */
 
+const createAuditEvent = async (session, {
+  action,
+  entityType,
+  entityId,
+  actor = 'system',
+  details = null,
+  relatedConceptIds = []
+}) => {
+  const id = `audit-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+  const timestamp = new Date().toISOString();
+  const detailsJson = details ? JSON.stringify(details) : null;
+
+  await session.run(
+    `CREATE (e:AUDIT_EVENT {
+       id: $id,
+       timestamp: $timestamp,
+       action: $action,
+       entityType: $entityType,
+       entityId: $entityId,
+       actor: $actor,
+       details: $details
+     })
+     WITH e
+     UNWIND $relatedConceptIds AS konceptId
+     MATCH (k:KONCEPT {id: konceptId})
+     CREATE (e)-[:DOTYCZY]->(k)
+     RETURN e`,
+    {
+      id,
+      timestamp,
+      action,
+      entityType,
+      entityId,
+      actor,
+      details: detailsJson,
+      relatedConceptIds
+    }
+  );
+};
+
 export const resolvers = {
   Query: {
     getAllConcepts: async (_, __, { driver }) => {
@@ -258,6 +298,27 @@ export const resolvers = {
       } finally {
         await session.close();
       }
+    },
+
+    getAuditEvents: async (_, { limit, konceptId }, { driver }) => {
+      const session = driver.session();
+      const limitVal = Math.max(1, Math.min(200, parseInt(limit || 50)));
+      try {
+        const cypher = konceptId
+          ? `MATCH (e:AUDIT_EVENT)-[:DOTYCZY]->(k:KONCEPT {id: $konceptId})
+             RETURN e
+             ORDER BY e.timestamp DESC
+             LIMIT ${limitVal}`
+          : `MATCH (e:AUDIT_EVENT)
+             RETURN e
+             ORDER BY e.timestamp DESC
+             LIMIT ${limitVal}`;
+
+        const result = await session.run(cypher, { konceptId });
+        return result.records.map(record => record.get('e').properties);
+      } finally {
+        await session.close();
+      }
     }
   },
   
@@ -296,6 +357,17 @@ export const resolvers = {
         );
         
         const node = result.records[0].get('n');
+        await createAuditEvent(session, {
+          action: 'CREATE_CONCEPT',
+          entityType: 'KONCEPT',
+          entityId: id,
+          relatedConceptIds: [id],
+          details: {
+            label: input.label,
+            domenaPierwotna: input.domenaPierwotna,
+            koherencja: input.koherencja
+          }
+        });
         return {
           ...node.properties,
           id: node.properties.id,
@@ -324,6 +396,19 @@ export const resolvers = {
         
         const rel = result.records[0].get('r');
         const target = result.records[0].get('to');
+
+        await createAuditEvent(session, {
+          action: 'CREATE_RELATION',
+          entityType: 'RELATION',
+          entityId: `${input.fromId}-${rel.type}-${input.toId}`,
+          relatedConceptIds: [input.fromId, input.toId],
+          details: {
+            fromId: input.fromId,
+            toId: input.toId,
+            typ: rel.type,
+            waga: rel.properties.waga || 1.0
+          }
+        });
         
         return {
           typ: rel.type,
@@ -354,6 +439,16 @@ export const resolvers = {
         );
         
         const node = result.records[0].get('n');
+        await createAuditEvent(session, {
+          action: 'UPDATE_COHERENCE',
+          entityType: 'KONCEPT',
+          entityId: id,
+          relatedConceptIds: [id],
+          details: {
+            koherencja,
+            statusAntiD: koherencja >= 0.80
+          }
+        });
         return {
           ...node.properties,
           id: node.properties.id,
@@ -380,6 +475,13 @@ export const resolvers = {
         }
         
         const node = result.records[0].get('n');
+        await createAuditEvent(session, {
+          action: 'UPDATE_STATUS',
+          entityType: 'KONCEPT',
+          entityId: id,
+          relatedConceptIds: [id],
+          details: { statusTrajektorii }
+        });
         return {
           ...node.properties,
           id: node.properties.id,
@@ -407,6 +509,13 @@ export const resolvers = {
         }
 
         const node = result.records[0].get('n');
+        await createAuditEvent(session, {
+          action: 'REPORT_EXTERNAL_ENTROPY',
+          entityType: 'KONCEPT',
+          entityId: konceptId,
+          relatedConceptIds: [konceptId],
+          details: { entropiaWektor, zrodlo }
+        });
         return {
           ...node.properties,
           id: node.properties.id,

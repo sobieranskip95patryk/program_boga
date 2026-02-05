@@ -13,6 +13,7 @@ import GraphVisualization from '../components/GraphVisualization';
 import RelationshipPanel from '../components/RelationshipPanel';
 import CoherenceEditor from '../components/CoherenceEditor';
 import RelationFilter, { ALL_RELATION_TYPES } from '../components/RelationFilter';
+import AuditTrailPanel from '../components/AuditTrailPanel';
 
 // Apollo Client setup
 const client = new ApolloClient({
@@ -117,6 +118,20 @@ const UPDATE_STATUS = gql`
   }
 `;
 
+const GET_AUDIT_EVENTS = gql`
+  query GetAuditEvents($limit: Int = 20, $konceptId: ID) {
+    getAuditEvents(limit: $limit, konceptId: $konceptId) {
+      id
+      timestamp
+      action
+      entityType
+      entityId
+      actor
+      details
+    }
+  }
+`;
+
 function KnowledgeGraphExplorer() {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,11 +152,15 @@ function KnowledgeGraphExplorer() {
   const [fetchRelationships, { data: relData, loading: relLoading, error: relError }] =
     useLazyQuery(GET_NODE_RELATIONSHIPS, { fetchPolicy: 'network-only' });
 
+  const [fetchAuditEvents, { data: auditData, loading: auditLoading, error: auditError }] =
+    useLazyQuery(GET_AUDIT_EVENTS, { fetchPolicy: 'network-only' });
+
   const [updateCoherence, { loading: coherenceUpdating, data: coherenceResult }] =
     useMutation(UPDATE_COHERENCE, {
       onCompleted: () => {
         refetch();
         if (selectedNodeId) fetchConceptById({ variables: { id: selectedNodeId } });
+        if (selectedNodeId) fetchAuditEvents({ variables: { konceptId: selectedNodeId, limit: 20 } });
       }
     });
 
@@ -150,6 +169,7 @@ function KnowledgeGraphExplorer() {
       onCompleted: () => {
         refetch();
         if (selectedNodeId) fetchConceptById({ variables: { id: selectedNodeId } });
+        if (selectedNodeId) fetchAuditEvents({ variables: { konceptId: selectedNodeId, limit: 20 } });
       }
     });
 
@@ -165,6 +185,7 @@ function KnowledgeGraphExplorer() {
     setSelectedNodeId(nodeId);
     fetchConceptById({ variables: { id: nodeId } });
     fetchRelationships({ variables: { id: nodeId } });
+    fetchAuditEvents({ variables: { konceptId: nodeId, limit: 20 } });
   };
 
   if (loading) {
@@ -313,6 +334,7 @@ function KnowledgeGraphExplorer() {
             if (nodeId) {
               fetchConceptById({ variables: { id: nodeId } });
               fetchRelationships({ variables: { id: nodeId } });
+              fetchAuditEvents({ variables: { konceptId: nodeId, limit: 20 } });
             }
           }}
         />
@@ -397,6 +419,15 @@ function KnowledgeGraphExplorer() {
                     loading={relLoading}
                     error={relError}
                     onNavigate={handleNavigateToNode}
+                  />
+                </div>
+
+                {/* ── Audit Trail Section ── */}
+                <div className="p-4">
+                  <AuditTrailPanel
+                    events={auditData?.getAuditEvents}
+                    loading={auditLoading}
+                    error={auditError}
                   />
                 </div>
               </div>
