@@ -248,17 +248,19 @@ function KnowledgeGraphExplorer() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-black text-white">
+    <div className="min-h-screen flex flex-col text-white relative overflow-hidden">
+      <div className="absolute inset-0 mta-bg pointer-events-none" />
+      <div className="relative z-10 flex flex-col min-h-screen">
       {/* Header */}
-      <header className="bg-black border-b border-cyan-500 p-4">
+      <header className="glass-panel neon-border border-cyan-500/40 p-4 mx-4 mt-4 rounded-xl">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-cyan-400 font-mono">MTAQuestWebsideX</h1>
-            <div className="text-sm text-gray-400">GOK:AI Protocol P=1.0 – Hyper-Interface</div>
+            <h1 className="text-3xl font-bold text-cyan-400 font-mono title-glow">MTAQuestWebsideX</h1>
+            <div className="text-xs text-gray-400 tracking-widest">GOK:AI Protocol P=1.0 – Hyper-Interface</div>
           </div>
           
           {validationData && (
-            <div className="bg-black/50 border border-cyan-500 p-3 rounded-lg font-mono text-sm">
+            <div className="glass-panel border-cyan-500/40 p-3 rounded-lg font-mono text-sm">
               <div className="flex gap-6">
                 <div>
                   <span className="text-gray-400">Nodes:</span>{' '}
@@ -283,7 +285,7 @@ function KnowledgeGraphExplorer() {
       </header>
 
       {/* Controls */}
-      <div className="bg-black border-b border-cyan-500 p-4 space-y-3">
+      <div className="glass-panel neon-border p-4 space-y-3 mx-4 mt-4 rounded-xl">
         <div className="flex gap-4 items-center">
           {/* Search */}
           <input
@@ -291,14 +293,14 @@ function KnowledgeGraphExplorer() {
             placeholder="Search concepts..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-black border border-cyan-500 px-4 py-2 rounded-lg text-white font-mono focus:outline-none focus:border-cyan-300"
+            className="flex-1 bg-black/70 border border-cyan-500/50 px-4 py-2 rounded-lg text-white font-mono focus:outline-none focus:border-cyan-300"
           />
           
           {/* Domain filter */}
           <select
             value={filterDomain}
             onChange={(e) => setFilterDomain(e.target.value)}
-            className="bg-black border border-cyan-500 px-4 py-2 rounded-lg text-white font-mono focus:outline-none focus:border-cyan-300"
+            className="bg-black/70 border border-cyan-500/50 px-4 py-2 rounded-lg text-white font-mono focus:outline-none focus:border-cyan-300"
           >
             <option value="ALL">All Domains</option>
             <option value="KAR">KAR</option>
@@ -311,7 +313,7 @@ function KnowledgeGraphExplorer() {
           {/* Refresh */}
           <button
             onClick={() => refetch()}
-            className="bg-cyan-500 hover:bg-cyan-600 text-black px-4 py-2 rounded-lg font-mono font-bold transition-colors"
+            className="bg-cyan-500 hover:bg-cyan-600 text-black px-4 py-2 rounded-lg font-mono font-bold transition-colors shadow-[0_0_12px_rgba(0,217,255,0.35)]"
           >
             ⟳ Refresh
           </button>
@@ -325,25 +327,27 @@ function KnowledgeGraphExplorer() {
       </div>
 
       {/* Graph visualization */}
-      <div className="flex-1 relative">
-        <GraphVisualization
-          nodes={filteredNodes}
-          edges={edges}
-          onNodeSelect={(nodeId) => {
-            setSelectedNodeId(nodeId);
-            if (nodeId) {
-              fetchConceptById({ variables: { id: nodeId } });
-              fetchRelationships({ variables: { id: nodeId } });
-              fetchAuditEvents({ variables: { konceptId: nodeId, limit: 20 } });
-            }
-          }}
-        />
+      <div className="flex-1 relative p-4">
+        <div className="w-full h-full rounded-2xl overflow-hidden glass-panel neon-border">
+          <GraphVisualization
+            nodes={filteredNodes}
+            edges={edges}
+            onNodeSelect={(nodeId) => {
+              setSelectedNodeId(nodeId);
+              if (nodeId) {
+                fetchConceptById({ variables: { id: nodeId } });
+                fetchRelationships({ variables: { id: nodeId } });
+                fetchAuditEvents({ variables: { konceptId: nodeId, limit: 20 } });
+              }
+            }}
+          />
+        </div>
 
         {/* ═══ Node Detail Sidebar ═══ */}
         {selectedNodeId && (
-          <div className="absolute top-0 right-0 bottom-0 w-[380px] bg-black/95 border-l border-cyan-500 font-mono overflow-y-auto">
+          <div className="absolute top-4 right-4 bottom-4 w-[380px] glass-panel neon-border border-cyan-500/40 font-mono overflow-y-auto rounded-xl">
             {/* Sidebar header */}
-            <div className="sticky top-0 bg-black/95 border-b border-cyan-500/50 p-4 z-10">
+            <div className="sticky top-0 bg-black/70 border-b border-cyan-500/50 p-4 z-10 rounded-t-xl">
               <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0">
                   <div className="text-cyan-400 text-[10px] uppercase tracking-wider mb-1">Szczegóły węzła</div>

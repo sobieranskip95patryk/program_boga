@@ -205,7 +205,7 @@ export default function GraphVisualization({ nodes, edges, onNodeSelect }) {
       />
       
       {/* Stats overlay */}
-      <div className="absolute top-4 right-4 bg-black/80 border border-cyan-500 p-4 rounded-lg font-mono text-sm">
+      <div className="absolute top-4 right-4 glass-panel neon-border border-cyan-500/40 p-4 rounded-lg font-mono text-sm">
         <div className="text-cyan-400 font-bold mb-2">SYSTEM STATUS</div>
         <div className="space-y-1 text-white">
           <div>Nodes: <span className="text-cyan-400">{stats.totalNodes}</span></div>
@@ -218,7 +218,7 @@ export default function GraphVisualization({ nodes, edges, onNodeSelect }) {
       </div>
 
       {/* Legend */}
-      <div className="absolute top-4 left-4 bg-black/80 border border-cyan-500 p-4 rounded-lg font-mono text-xs">
+      <div className="absolute top-4 left-4 glass-panel neon-border border-cyan-500/40 p-4 rounded-lg font-mono text-xs">
         <div className="text-cyan-400 font-bold mb-2">DOMAINS</div>
         <div className="space-y-1">
           {Object.entries(DOMAIN_COLORS).map(([domain, color]) => (
