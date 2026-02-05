@@ -525,6 +525,138 @@ export const resolvers = {
       } finally {
         await session.close();
       }
+    },
+
+    updateNodeProperties: async (_, { input }, { driver }) => {
+      const session = driver.session();
+      try {
+        const { id, ...fields } = input;
+        const setParts = [];
+        const params = { id };
+
+        if (fields.label !== undefined) { setParts.push('n.label = $label'); params.label = fields.label; }
+        if (fields.domenaPierwotna !== undefined) { setParts.push('n.domenaPierwotna = $domenaPierwotna'); params.domenaPierwotna = fields.domenaPierwotna; }
+        if (fields.definicja !== undefined) { setParts.push('n.definicja = $definicja'); params.definicja = fields.definicja; }
+        if (fields.aksjomatPodstawowy !== undefined) { setParts.push('n.aksjomatPodstawowy = $aksjomatPodstawowy'); params.aksjomatPodstawowy = fields.aksjomatPodstawowy; }
+        if (fields.koherencja !== undefined) {
+          setParts.push('n.koherencja = $koherencja');
+          setParts.push('n.statusAntiD = $statusAntiD');
+          params.koherencja = fields.koherencja;
+          params.statusAntiD = fields.koherencja >= 0.80;
+        }
+        if (fields.statusTrajektorii !== undefined) { setParts.push('n.statusTrajektorii = $statusTrajektorii'); params.statusTrajektorii = fields.statusTrajektorii; }
+        if (fields.zrodloAksjomatyczne !== undefined) { setParts.push('n.`źródłoAksjomatyczne` = $zrodloAksjomatyczne'); params.zrodloAksjomatyczne = fields.zrodloAksjomatyczne; }
+        if (fields.wektorHiperGestosci !== undefined) { setParts.push('n.`wektorHiperGęstości` = $wektorHiperGestosci'); params.wektorHiperGestosci = fields.wektorHiperGestosci; }
+        if (fields.EntropyVector !== undefined) { setParts.push('n.EntropyVector = $EntropyVector'); params.EntropyVector = fields.EntropyVector; }
+        if (fields.ExternalSource !== undefined) { setParts.push('n.ExternalSource = $ExternalSource'); params.ExternalSource = fields.ExternalSource; }
+
+        if (setParts.length === 0) {
+          throw new Error('No properties provided for update');
+        }
+
+        const result = await session.run(
+          `MATCH (n:KONCEPT {id: $id})
+           SET ${setParts.join(', ')}
+           RETURN n`,
+          params
+        );
+
+        if (result.records.length === 0) {
+          throw new Error(`Koncept '${id}' not found`);
+        }
+
+        const node = result.records[0].get('n');
+        await createAuditEvent(session, {
+          action: 'UPDATE_NODE_PROPERTIES',
+          entityType: 'KONCEPT',
+          entityId: id,
+          relatedConceptIds: [id],
+          details: fields
+        });
+
+        return {
+          ...node.properties,
+          id: node.properties.id,
+          zrodloAksjomatyczne: node.properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: node.properties['wektorHiperGęstości']
+        };
+      } finally {
+        await session.close();
+      }
+    },
+
+    updateRelationshipProperties: async (_, { input }, { driver }) => {
+      const session = driver.session();
+      try {
+        const { fromId, toId, typ, waga } = input;
+
+        if (waga === undefined || waga === null) {
+          throw new Error('Property "waga" is required for relationship update');
+        }
+
+        const result = await session.run(
+          `MATCH (from:KONCEPT {id: $fromId})-[r:${typ}]->(to:KONCEPT {id: $toId})
+           SET r.waga = $waga
+           RETURN r, to`,
+          { fromId, toId, waga }
+        );
+
+        if (result.records.length === 0) {
+          throw new Error(`Relation '${typ}' from '${fromId}' to '${toId}' not found`);
+        }
+
+        const rel = result.records[0].get('r');
+        const target = result.records[0].get('to');
+
+        await createAuditEvent(session, {
+          action: 'UPDATE_RELATION_PROPERTIES',
+          entityType: 'RELATION',
+          entityId: `${fromId}-${rel.type}-${toId}`,
+          relatedConceptIds: [fromId, toId],
+          details: { fromId, toId, typ: rel.type, waga: rel.properties.waga || 1.0 }
+        });
+
+        return {
+          typ: rel.type,
+          cel: {
+            ...target.properties,
+            id: target.properties.id
+          },
+          waga: rel.properties.waga
+        };
+      } finally {
+        await session.close();
+      }
+    },
+
+    deleteRelationship: async (_, { input }, { driver }) => {
+      const session = driver.session();
+      try {
+        const { fromId, toId, typ } = input;
+        const result = await session.run(
+          `MATCH (from:KONCEPT {id: $fromId})-[r:${typ}]->(to:KONCEPT {id: $toId})
+           DELETE r
+           RETURN count(r) as deleted`,
+          { fromId, toId }
+        );
+
+        const deleted = result.records[0]?.get('deleted')?.toNumber?.() ?? 0;
+        if (deleted === 0) {
+          throw new Error(`Relation '${typ}' from '${fromId}' to '${toId}' not found`);
+        }
+
+        await createAuditEvent(session, {
+          action: 'DELETE_RELATION',
+          entityType: 'RELATION',
+          entityId: `${fromId}-${typ}-${toId}`,
+          relatedConceptIds: [fromId, toId],
+          details: { fromId, toId, typ }
+        });
+
+        return true;
+      } finally {
+        await session.close();
+      }
     }
   },
   

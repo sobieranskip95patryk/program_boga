@@ -177,6 +177,15 @@ export const typeDefs = gql`
 
     """Report external entropy measurement (from MTA_NOISE_SENSOR)"""
     reportExternalEntropy(konceptId: ID!, entropiaWektor: Float!, zrodlo: String!): Koncept!
+
+    """Update concept properties (partial update)"""
+    updateNodeProperties(input: UpdateNodePropertiesInput!): Koncept!
+
+    """Update relationship properties (e.g. weight)"""
+    updateRelationshipProperties(input: UpdateRelationshipPropertiesInput!): Relacja!
+
+    """Delete relationship between concepts"""
+    deleteRelationship(input: DeleteRelationshipInput!): Boolean!
   }
   
   """
@@ -201,5 +210,41 @@ export const typeDefs = gql`
     toId: ID!
     typ: TypRelacji!
     waga: Float
+  }
+
+  """
+  Input for partial concept property updates
+  """
+  input UpdateNodePropertiesInput {
+    id: ID!
+    label: String
+    domenaPierwotna: Domena
+    definicja: String
+    aksjomatPodstawowy: String
+    koherencja: Float
+    statusTrajektorii: StatusTrajektorii
+    zrodloAksjomatyczne: String
+    wektorHiperGestosci: Float
+    EntropyVector: Float
+    ExternalSource: String
+  }
+
+  """
+  Input for relationship property updates
+  """
+  input UpdateRelationshipPropertiesInput {
+    fromId: ID!
+    toId: ID!
+    typ: TypRelacji!
+    waga: Float
+  }
+
+  """
+  Input for deleting a relationship
+  """
+  input DeleteRelationshipInput {
+    fromId: ID!
+    toId: ID!
+    typ: TypRelacji!
   }
 `;
