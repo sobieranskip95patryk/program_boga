@@ -1,0 +1,32 @@
+{
+  "name": "mta-graphql-api",
+  "version": "1.0.0",
+  "description": "Apollo GraphQL Server for MTAQuestWebsideX - GOK:AI Protocol",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "graphql",
+    "apollo",
+    "neo4j",
+    "gok-ai",
+    "mta"
+  ],
+  "author": "MTAQuest Team",
+  "license": "MIT",
+  "dependencies": {
+    "@apollo/server": "^4.10.0",
+    "neo4j-driver": "^5.14.0",
+    "graphql": "^16.8.1",
+    "graphql-tag": "^2.12.6",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

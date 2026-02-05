@@ -1,0 +1,129 @@
+version: '3.9'
+
+services:
+  # ============ NEO4J DATABASE (MTA_CORE_GRAPH) ============
+  neo4j:
+    image: neo4j:5.13-enterprise
+    container_name: mta-neo4j-core
+    ports:
+      - "7474:7474"   # HTTP
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/neo4j_password_secure_123
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4J_dbms_memory_heap_initial__size: 2G
+      NEO4J_dbms_memory_heap_max__size: 4G
+      NEO4J_dbms_memory_pagecache_size: 2G
+    volumes:
+      - neo4j_data:/var/lib/neo4j/data
+      - neo4j_logs:/var/lib/neo4j/logs
+      - ./MTA_CORE_GRAPH/cypher:/import/cypher:ro
+      - ./MTA_CORE_GRAPH/data:/import/data:ro
+    networks:
+      - mta_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "com.mta.service=neo4j-core"
+
+  # ============ GRAPHQL API SERVER ============
+  graphql-api:
+    image: node:18-alpine
+    container_name: mta-graphql-api
+    working_dir: /app
+    ports:
+      - "4000:4000"
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: neo4j_password_secure_123
+      GRAPHQL_PORT: 4000
+    volumes:
+      - ./MTA_CORE_GRAPH:/app:ro
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - mta_network
+    command: >
+      sh -c "npm install -g apollo-server-express &&
+             npm install neo4j-driver &&
+             npm install express &&
+             node -e \"console.log('GraphQL API waiting for deployment')\""
+    labels:
+      - "com.mta.service=graphql-api"
+
+  # ============ PYTHON VALIDATION ENGINE (MTA_LOGIC_VALIDATION) ============
+  validation-engine:
+    build:
+      context: ./MTA_LOGIC_VALIDATION
+      dockerfile: Dockerfile
+    container_name: mta-validation-engine
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: neo4j_password_secure_123
+      LOG_LEVEL: INFO
+    volumes:
+      - ./MTA_LOGIC_VALIDATION:/app
+      - ./Phase_1_Synthesis/nodes_50_second_tier.json:/app/data/nodes.json:ro
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - mta_network
+    command: python /app/src/anti_d_validator.py --validate-all --watch
+    labels:
+      - "com.mta.service=validation-engine"
+
+  # ============ NEXT.JS FRONTEND (MTA_HYPER_INTERFACE) ============
+  frontend:
+    build:
+      context: ./MTA_HYPER_INTERFACE
+      dockerfile: Dockerfile
+    container_name: mta-hyper-interface
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_GRAPHQL_ENDPOINT: http://localhost:4000/graphql
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: neo4j_password_secure_123
+    depends_on:
+      - graphql-api
+      - neo4j
+    networks:
+      - mta_network
+    labels:
+      - "com.mta.service=frontend"
+
+networks:
+  mta_network:
+    driver: bridge
+
+volumes:
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+
+# ============ INSTRUCTIONS ============
+# Start all services:
+#   docker-compose up -d
+#
+# View logs:
+#   docker-compose logs -f
+#
+# Access services:
+#   Neo4j Browser: http://localhost:7474 (user: neo4j, password: neo4j_password_secure_123)
+#   GraphQL IDE: http://localhost:4000/graphql
+#   Frontend: http://localhost:3000
+#
+# Stop all services:
+#   docker-compose down
+#
+# Remove volumes (careful!):
+#   docker-compose down -v

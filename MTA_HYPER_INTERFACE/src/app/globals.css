@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MTA HYPER INTERFACE – GLOBAL STYLES
+   GOK:AI Protocol: Futuristic/Monumental aesthetic
+   ════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --color-cyan: #00D9FF;
+  --color-magenta: #FF00FF;
+  --color-green: #00FF88;
+  --color-gold: #FFD700;
+  --color-orange: #FF6B35;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: #000000;
+  color: #FFFFFF;
+}
+
+body {
+  font-family: 'Courier New', monospace;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+  border: 1px solid var(--color-cyan);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-cyan);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-magenta);
+}
+
+/* Selection */
+::selection {
+  background: var(--color-cyan);
+  color: #000000;
+}
+
+/* Glow effects */
+.glow-cyan {
+  box-shadow: 0 0 10px var(--color-cyan), 0 0 20px var(--color-cyan);
+}
+
+.glow-magenta {
+  box-shadow: 0 0 10px var(--color-magenta), 0 0 20px var(--color-magenta);
+}
+
+/* Animations */
+@keyframes pulse-cyan {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-cyan {
+  animation: pulse-cyan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Code blocks */
+code {
+  background-color: rgba(0, 217, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  color: var(--color-cyan);
+}
+
+pre {
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--color-cyan);
+  overflow-x: auto;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}

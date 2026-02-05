@@ -1,0 +1,40 @@
+# Konfiguracja sensora entropii
+sensor:
+  scan_interval: 300  # sekundy
+  graphql_url: "http://localhost:4000/graphql"
+  log_level: "INFO"
+
+# Źródła danych rynkowych
+market_sources:
+  stocks:
+    - symbol: "^GSPC"       # S&P 500
+      koncept_mapping: "ROOT_EAEO"
+      name: "S&P 500 Index"
+    - symbol: "^DJI"        # Dow Jones
+      koncept_mapping: "ROOT_EAEO"
+      name: "Dow Jones"
+    - symbol: "BTC-USD"     # Bitcoin
+      koncept_mapping: "ROOT_NCSS"
+      name: "Bitcoin USD"
+    - symbol: "ETH-USD"     # Ethereum
+      koncept_mapping: "ROOT_NCSS"
+      name: "Ethereum USD"
+
+# Źródła RSS / newsów
+rss_sources:
+  - url: "https://feeds.reuters.com/reuters/businessNews"
+    kategoria: "finanse"
+    koncept_mapping: "ROOT_EAEO"
+  - url: "https://feeds.reuters.com/reuters/technologyNews"
+    kategoria: "technologia"
+    koncept_mapping: "ROOT_NCSS"
+  - url: "https://feeds.reuters.com/reuters/scienceNews"
+    kategoria: "nauka"
+    koncept_mapping: "ROOT_KAR"
+
+# Mapowanie kategorii na wagi entropii
+entropy_weights:
+  volatility: 0.3       # Zmienność cen
+  sentiment: 0.3        # Sentyment mediów
+  volume_anomaly: 0.2   # Anomalie wolumenu
+  news_frequency: 0.2   # Częstotliwość wiadomości

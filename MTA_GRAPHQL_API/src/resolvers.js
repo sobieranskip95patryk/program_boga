@@ -1,0 +1,447 @@
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ * MTA GRAPHQL API – RESOLVERS
+ * GOK:AI Protocol: Neo4j integration with Anti-D validation
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+
+export const resolvers = {
+  Query: {
+    getAllConcepts: async (_, __, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:KONCEPT)
+           RETURN n
+           ORDER BY n.label`
+        );
+        
+        return result.records.map(record => ({
+          ...record.get('n').properties,
+          id: record.get('n').properties.id,
+          zrodloAksjomatyczne: record.get('n').properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: record.get('n').properties['wektorHiperGęstości']
+        }));
+      } finally {
+        await session.close();
+      }
+    },
+    
+    getConceptById: async (_, { id }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:KONCEPT {id: $id})
+           RETURN n`,
+          { id }
+        );
+        
+        if (result.records.length === 0) return null;
+        
+        const node = result.records[0].get('n');
+        return {
+          ...node.properties,
+          id: node.properties.id,
+          zrodloAksjomatyczne: node.properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: node.properties['wektorHiperGęstości']
+        };
+      } finally {
+        await session.close();
+      }
+    },
+    
+    getConceptsByDomain: async (_, { domena }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:KONCEPT {domenaPierwotna: $domena})
+           RETURN n
+           ORDER BY n.label`,
+          { domena }
+        );
+        
+        return result.records.map(record => ({
+          ...record.get('n').properties,
+          id: record.get('n').properties.id,
+          zrodloAksjomatyczne: record.get('n').properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: record.get('n').properties['wektorHiperGęstości']
+        }));
+      } finally {
+        await session.close();
+      }
+    },
+    
+    getRootNodes: async (_, __, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:ROOT)
+           RETURN n
+           ORDER BY n.label`
+        );
+        
+        return result.records.map(record => ({
+          ...record.get('n').properties,
+          id: record.get('n').properties.id,
+          zrodloAksjomatyczne: record.get('n').properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: record.get('n').properties['wektorHiperGęstości']
+        }));
+      } finally {
+        await session.close();
+      }
+    },
+    
+    searchConcepts: async (_, { query }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:KONCEPT)
+           WHERE n.label CONTAINS $query OR n.definicja CONTAINS $query
+           RETURN n
+           ORDER BY n.label
+           LIMIT 50`,
+          { query }
+        );
+        
+        return result.records.map(record => ({
+          ...record.get('n').properties,
+          id: record.get('n').properties.id,
+          zrodloAksjomatyczne: record.get('n').properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: record.get('n').properties['wektorHiperGęstości']
+        }));
+      } finally {
+        await session.close();
+      }
+    },
+    
+    getPath: async (_, { fromId, toId, maxHops }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH path = shortestPath((from:KONCEPT {id: $fromId})-[*..${maxHops}]-(to:KONCEPT {id: $toId}))
+           RETURN nodes(path) as nodes, length(path) as length`,
+          { fromId, toId }
+        );
+        
+        if (result.records.length === 0) {
+          return { nodes: [], length: 0, valid: false };
+        }
+        
+        const record = result.records[0];
+        const nodes = record.get('nodes').map(node => ({
+          ...node.properties,
+          id: node.properties.id,
+          zrodloAksjomatyczne: node.properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: node.properties['wektorHiperGęstości']
+        }));
+        const length = record.get('length').toNumber();
+        
+        return {
+          nodes,
+          length,
+          valid: length <= maxHops
+        };
+      } finally {
+        await session.close();
+      }
+    },
+    
+    validateAntiD: async (_, __, { driver }) => {
+      const session = driver.session();
+      try {
+        // Get total nodes
+        const totalResult = await session.run(
+          `MATCH (n:KONCEPT)
+           RETURN count(n) as total`
+        );
+        const totalNodes = totalResult.records[0].get('total').toNumber();
+        
+        // Get valid nodes (coherence >= 0.80)
+        const validResult = await session.run(
+          `MATCH (n:KONCEPT)
+           WHERE n.koherencja >= 0.80
+           RETURN count(n) as valid`
+        );
+        const validNodes = validResult.records[0].get('valid').toNumber();
+        
+        // Get average coherence
+        const avgResult = await session.run(
+          `MATCH (n:KONCEPT)
+           RETURN avg(n.koherencja) as avgCoherence`
+        );
+        const averageCoherence = avgResult.records[0].get('avgCoherence');
+        
+        // Get isolated nodes
+        const isolatedResult = await session.run(
+          `MATCH (n:KONCEPT)
+           WHERE NOT (n)-[]-()
+           RETURN n`
+        );
+        const isolatedNodes = isolatedResult.records.map(record => ({
+          ...record.get('n').properties,
+          id: record.get('n').properties.id,
+          zrodloAksjomatyczne: record.get('n').properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: record.get('n').properties['wektorHiperGęstości']
+        }));
+        
+        // Calculate path reachability to ROOT nodes
+        const reachResult = await session.run(
+          `MATCH (n:KONCEPT)
+           WHERE NOT n:ROOT
+           MATCH (root:ROOT)
+           WITH n, root
+           MATCH path = shortestPath((n)-[*..5]-(root))
+           RETURN count(DISTINCT n) as reachable`
+        );
+        const reachable = reachResult.records[0]?.get('reachable')?.toNumber() || 0;
+        const pathReachability = totalNodes > 5 ? reachable / (totalNodes - 5) : 1.0;
+        
+        return {
+          totalNodes,
+          validNodes,
+          invalidNodes: totalNodes - validNodes,
+          averageCoherence,
+          isolatedNodes,
+          pathReachability
+        };
+      } finally {
+        await session.close();
+      }
+    },
+
+    getNodeRelationships: async (_, { id }, { driver }) => {
+      const session = driver.session();
+      try {
+        // Outgoing relations
+        const outResult = await session.run(
+          `MATCH (from:KONCEPT {id: $id})-[r]->(to:KONCEPT)
+           RETURN type(r) as typ, r, from, to`,
+          { id }
+        );
+        const outgoing = outResult.records.map(record => ({
+          typ: record.get('typ'),
+          waga: record.get('r').properties.waga || 1.0,
+          source: {
+            ...record.get('from').properties,
+            zrodloAksjomatyczne: record.get('from').properties['źródłoAksjomatyczne'],
+            wektorHiperGestosci: record.get('from').properties['wektorHiperGęstości']
+          },
+          target: {
+            ...record.get('to').properties,
+            zrodloAksjomatyczne: record.get('to').properties['źródłoAksjomatyczne'],
+            wektorHiperGestosci: record.get('to').properties['wektorHiperGęstości']
+          }
+        }));
+
+        // Incoming relations
+        const inResult = await session.run(
+          `MATCH (from:KONCEPT)-[r]->(to:KONCEPT {id: $id})
+           RETURN type(r) as typ, r, from, to`,
+          { id }
+        );
+        const incoming = inResult.records.map(record => ({
+          typ: record.get('typ'),
+          waga: record.get('r').properties.waga || 1.0,
+          source: {
+            ...record.get('from').properties,
+            zrodloAksjomatyczne: record.get('from').properties['źródłoAksjomatyczne'],
+            wektorHiperGestosci: record.get('from').properties['wektorHiperGęstości']
+          },
+          target: {
+            ...record.get('to').properties,
+            zrodloAksjomatyczne: record.get('to').properties['źródłoAksjomatyczne'],
+            wektorHiperGestosci: record.get('to').properties['wektorHiperGęstości']
+          }
+        }));
+
+        return { nodeId: id, outgoing, incoming };
+      } finally {
+        await session.close();
+      }
+    }
+  },
+  
+  Mutation: {
+    createConcept: async (_, { input }, { driver }) => {
+      const session = driver.session();
+      try {
+        const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        const result = await session.run(
+          `CREATE (n:KONCEPT {
+             id: $id,
+             label: $label,
+             domenaPierwotna: $domenaPierwotna,
+             definicja: $definicja,
+             aksjomatPodstawowy: $aksjomatPodstawowy,
+             koherencja: $koherencja,
+             statusAntiD: $statusAntiD,
+             statusTrajektorii: $statusTrajektorii,
+             źródłoAksjomatyczne: $zrodloAksjomatyczne,
+             wektorHiperGęstości: $wektorHiperGestosci
+           })
+           RETURN n`,
+          {
+            id,
+            label: input.label,
+            domenaPierwotna: input.domenaPierwotna,
+            definicja: input.definicja,
+            aksjomatPodstawowy: input.aksjomatPodstawowy,
+            koherencja: input.koherencja,
+            statusTrajektorii: input.statusTrajektorii,
+            zrodloAksjomatyczne: input.zrodloAksjomatyczne,
+            wektorHiperGestosci: input.wektorHiperGestosci,
+            statusAntiD: input.koherencja >= 0.80
+          }
+        );
+        
+        const node = result.records[0].get('n');
+        return {
+          ...node.properties,
+          id: node.properties.id,
+          zrodloAksjomatyczne: node.properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: node.properties['wektorHiperGęstości']
+        };
+      } finally {
+        await session.close();
+      }
+    },
+    
+    createRelation: async (_, { input }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (from:KONCEPT {id: $fromId})
+           MATCH (to:KONCEPT {id: $toId})
+           CREATE (from)-[r:${input.typ} {waga: $waga}]->(to)
+           RETURN r, to`,
+          {
+            fromId: input.fromId,
+            toId: input.toId,
+            waga: input.waga || 1.0
+          }
+        );
+        
+        const rel = result.records[0].get('r');
+        const target = result.records[0].get('to');
+        
+        return {
+          typ: rel.type,
+          cel: {
+            ...target.properties,
+            id: target.properties.id
+          },
+          waga: rel.properties.waga
+        };
+      } finally {
+        await session.close();
+      }
+    },
+    
+    updateCoherence: async (_, { id, koherencja }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:KONCEPT {id: $id})
+           SET n.koherencja = $koherencja,
+               n.statusAntiD = $statusAntiD
+           RETURN n`,
+          {
+            id,
+            koherencja,
+            statusAntiD: koherencja >= 0.80
+          }
+        );
+        
+        const node = result.records[0].get('n');
+        return {
+          ...node.properties,
+          id: node.properties.id,
+          zrodloAksjomatyczne: node.properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: node.properties['wektorHiperGęstości']
+        };
+      } finally {
+        await session.close();
+      }
+    },
+
+    updateStatus: async (_, { id, statusTrajektorii }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:KONCEPT {id: $id})
+           SET n.statusTrajektorii = $statusTrajektorii
+           RETURN n`,
+          { id, statusTrajektorii }
+        );
+        
+        if (result.records.length === 0) {
+          throw new Error(`Node with id '${id}' not found`);
+        }
+        
+        const node = result.records[0].get('n');
+        return {
+          ...node.properties,
+          id: node.properties.id,
+          zrodloAksjomatyczne: node.properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: node.properties['wektorHiperGęstości']
+        };
+      } finally {
+        await session.close();
+      }
+    },
+
+    reportExternalEntropy: async (_, { konceptId, entropiaWektor, zrodlo }, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (n:KONCEPT {id: $konceptId})
+           SET n.EntropyVector = $entropiaWektor,
+               n.ExternalSource = $zrodlo
+           RETURN n`,
+          { konceptId, entropiaWektor, zrodlo }
+        );
+
+        if (result.records.length === 0) {
+          throw new Error(`Koncept '${konceptId}' not found`);
+        }
+
+        const node = result.records[0].get('n');
+        return {
+          ...node.properties,
+          id: node.properties.id,
+          zrodloAksjomatyczne: node.properties['źródłoAksjomatyczne'],
+          wektorHiperGestosci: node.properties['wektorHiperGęstości']
+        };
+      } finally {
+        await session.close();
+      }
+    }
+  },
+  
+  Koncept: {
+    relacje: async (parent, _, { driver }) => {
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          `MATCH (from:KONCEPT {id: $id})-[r]->(to:KONCEPT)
+           RETURN type(r) as typ, r, to`,
+          { id: parent.id }
+        );
+        
+        return result.records.map(record => ({
+          typ: record.get('typ'),
+          cel: {
+            ...record.get('to').properties,
+            id: record.get('to').properties.id,
+            zrodloAksjomatyczne: record.get('to').properties['źródłoAksjomatyczne'],
+            wektorHiperGestosci: record.get('to').properties['wektorHiperGęstości']
+          },
+          waga: record.get('r').properties.waga || 1.0
+        }));
+      } finally {
+        await session.close();
+      }
+    }
+  }
+};

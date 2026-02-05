@@ -1,0 +1,202 @@
+# Schema: 9-Property Node Structure (GOK:AI Standard)
+# Protocol: Gwarancja Koherencji (GOK:AI) v1.0
+
+nodes:
+  konzept:
+    description: "Knowledge concept node in the MTAQuestWebsideX graph"
+    properties:
+      id:
+        type: string
+        format: uuid
+        required: true
+        description: "Unique identifier (UUID)"
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      
+      label:
+        type: string
+        required: true
+        min_length: 3
+        max_length: 200
+        description: "Concept name (human-readable)"
+        example: "Kwantyzacja Informacji"
+      
+      domenaPierwotna:
+        type: enum
+        required: true
+        values: ["KAR", "MEHS", "NCSS", "EAEO", "BSIT"]
+        description: "Primary ROOT domain"
+        example: "KAR"
+      
+      definicja:
+        type: string
+        required: true
+        min_length: 50
+        max_length: 5000
+        description: "Formal definition of the concept"
+        example: "Process of converting continuous spectrum on discrete information units..."
+      
+      aksjomatPodstawowy:
+        type: string
+        required: true
+        min_length: 100
+        description: "Root axiom this concept derives from"
+        example: "Reality is a discrete information network..."
+      
+      koherencja:
+        type: float
+        required: true
+        minimum: 0.0
+        maximum: 1.0
+        description: "Coherence level (0.0-1.0). Must be ≥0.80 after validation; becomes 1.0 if Anti-D pass"
+        validation_rule: "koherencja >= 0.80 OR statusAntiD = false"
+        example: 1.0
+      
+      statusAntiD:
+        type: boolean
+        required: true
+        description: "Whether node passed Anti-D validation (P=1.0)"
+        default: false
+        example: true
+      
+      statusTrajektorii:
+        type: enum
+        required: true
+        values: ["Nowy", "Rozwój", "Stabilny", "Archaiczny"]
+        description: "Concept trajectory status (evolution over time)"
+        example: "Stabilny"
+      
+      źródłoAksjomatyczne:
+        type: enum
+        required: true
+        values: ["Internal", "External Synthesis", "Origin"]
+        description: "Source of the axiom (native vs. adapted knowledge)"
+        example: "Internal"
+      
+      wektorHiperGęstości:
+        type: float
+        required: true
+        minimum: 0.0
+        maximum: 1.0
+        description: "Conceptual complexity measure (information density)"
+        example: 0.87
+
+relations:
+  semantic_types:
+    - name: KONSTYTUUJE
+      description: "Fundamental relation: A must exist for B to be possible"
+      direction: "directed"
+      cardinality: "many-to-many"
+      example: "Kwantyzacja Informacji -[:KONSTYTUUJE]-> Fotonika Holograficzna"
+      constraints:
+        - "Must be unique within domain"
+        - "Prevents circular dependencies"
+    
+    - name: MANIFESTUJE
+      description: "Emergent relation: A manifests itself as B"
+      direction: "directed"
+      cardinality: "many-to-many"
+      example: "Świadomość -[:MANIFESTUJE]-> SpiralMind OS"
+      constraints:
+        - "One-directional flow"
+    
+    - name: WZMACNIA
+      description: "Synergistic: A + B > A and B separately (increases coherence)"
+      direction: "undirected"
+      cardinality: "many-to-many"
+      example: "Quantum Computing -[:WZMACNIA]-> Anti-Entropy Economy"
+      constraints:
+        - "Must increase koherencja of both nodes"
+        - "Symmetric relation"
+    
+    - name: ANTAGONIZUJE
+      description: "Dissonance: A and B exclude each other (requires resolution)"
+      direction: "directed"
+      cardinality: "many-to-many"
+      example: "Reductionism -[:ANTAGONIZUJE]-> Holistic Synthesis"
+      constraints:
+        - "Must have rozstrzygniecieLogiczne field"
+        - "LOGOS engine resolves conflicts"
+    
+    - name: MAPUJE_NA
+      description: "Isomorphic: A and B structurally identical but different material"
+      direction: "undirected"
+      cardinality: "many-to-many"
+      example: "Biological Evolution -[:MAPUJE_NA]-> Consciousness Evolution"
+      constraints:
+        - "Topological structure must be preserved"
+    
+    - name: WARUNKUJE
+      description: "Causality: A is necessary (but not sufficient) condition for B"
+      direction: "directed"
+      cardinality: "many-to-many"
+      example: "Internal Coherence -[:WARUNKUJE]-> Cosmic Ethics"
+      constraints:
+        - "Must define causal chain"
+
+validation_rules:
+  node_creation:
+    rule_1_all_properties:
+      description: "All 9 properties must be populated"
+      severity: "error"
+      checker: "LOGOS_engine"
+    
+    rule_2_coherence_minimum:
+      description: "Koherencja must be ≥ 0.80 initially; becomes 1.0 after Anti-D pass"
+      severity: "error"
+      validation_threshold: 0.80
+    
+    rule_3_path_reachability:
+      description: "Every node must reach all 5 ROOT nodes with ≤5 hops"
+      severity: "error"
+      max_hops: 5
+      required_roots: 5
+    
+    rule_4_minimum_relations:
+      description: "Each node must have minimum 3 semantic relations"
+      severity: "warning"
+      minimum_relations: 3
+    
+    rule_5_no_cycles:
+      description: "Prevent cyclic single-type relations (A→B→C→A with same type)"
+      severity: "error"
+      checker: "cycle_detector.py"
+    
+    rule_6_antagonizuje_resolution:
+      description: "ANTAGONIZUJE relations must include rozstrzygniecieLogiczne field"
+      severity: "error"
+      required_field: "rozstrzygniecieLogiczne"
+    
+    rule_7_entropy_check:
+      description: "No duplicate or redundant definitions"
+      severity: "warning"
+      checker: "semantic_similarity"
+
+anti_d_protocol:
+  p_value: 1.0
+  description: "Mathematical certainty of coherence"
+  compliance_percentage: 100.0
+  steps:
+    1. Validate all properties exist and are non-empty
+    2. Check koherencja >= 0.80
+    3. Verify path reachability (≤5 hops to all 5 ROOT)
+    4. Detect and flag cycles
+    5. Resolve ANTAGONIZUJE conflicts via LOGOS
+    6. Calculate final koherencja (becomes 1.0 if all checks pass)
+    7. Set statusAntiD = true if P=1.0
+
+domain_definitions:
+  KAR:
+    label: "Kwantowa Architektura Rzeczywistości"
+    axiom: "Reality is not material substance, but emergent dynamic information network"
+  MEHS:
+    label: "Meta-Etyka Hiper-Skalarna"
+    axiom: "Consciousness value is function of coherence and low-entropy information generation"
+  NCSS:
+    label: "Noosfera Cybernetyczna i System SpiralMind"
+    axiom: "Collective consciousness is self-organizing system evolving toward hyperlogic"
+  EAEO:
+    label: "Ekonomia Anti-Entropiczna Obfitości"
+    axiom: "Advanced civilization's resources are function of energy and information, not scarcity"
+  BSIT:
+    label: "Bio-Synchroniczna Inżynieria Trajektorii"
+    axiom: "Biology is technology; consciousness evolution requires intentional genetic reconfiguration"
